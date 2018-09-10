@@ -46,11 +46,9 @@ type Candidato {
 }
 
 type Bem {
-  ANO_ELEICAO: Int!
-  DESCRICAO_ELEICAO: String!
-  CD_TIPO_BEM_CANDIDATO: Int!
-  DS_TIPO_BEM_CANDIDATO: String!
-  DETALHE_BEM: String!
-  VALOR_BEM: Float!
-  HORA_ULTIMA_ATUALIZACAO: String!
+  id: String!
+  codigo: Int!
+  descricao: String!
+  detalhe: String!
+  valor: Float!
 }

@@ -8,42 +8,50 @@ const UFs = require('./uf')
 
 const eleicoes = require('./metadata')
 
-function createBensDB (db, uf) {
+function createBensDB (db, uf, { headers, map, ano, extension }) {
   return new Promise((resolve, reject) => {
     const filepath = path.resolve(
-      `./data/bem_candidato_2014/bem_candidato_2014_${ uf.toUpperCase() }.txt`
+      `./data/bem_candidato_${ano}/utf-8-bem_candidato_${ano}_${uf.toUpperCase()}.${extension}`
     )
     const stream = fs.createReadStream(filepath)
     const parsedData = {}
     const csvStream = csv
       .parse({
         delimiter: ';',
-        headers: HEADERS_BEM_CANDIDATO
+        headers
       })
       .on('data', data => {
-        data['VALOR_BEM'] = +data['VALOR_BEM']
-        data['CD_TIPO_BEM_CANDIDATO'] = +data['CD_TIPO_BEM_CANDIDATO']
-        data['ANO_ELEICAO'] = +data['ANO_ELEICAO']
-        const id = data['SQ_CANDIDATO']
+        const formattedData = {}
+        Object.keys(data).forEach(key => {
+          const schemaColumn = map.get(key)
+          if (schemaColumn) {
+            formattedData[schemaColumn] = data[key]
+          }
+        })
+        formattedData.valor = formattedData.valor.replace(/,/g, '.')
+        formattedData.valor = +formattedData.valor
+        formattedData.codigo = +formattedData.codigo
+        const id = formattedData.id
         if (!parsedData[id]) {
           parsedData[id] = {}
           parsedData[id]._id = id
           parsedData[id].bens = []
         }
-        parsedData[id].bens.push(data)
+        parsedData[id].bens.push(formattedData)
       })
       .on('end', () => {
-        const collection = db.collection(`bens-candidatos-${ uf }`)
+        const collectionName = `bens-candidatos-${uf}-${ano}`
+        const collection = db.collection(collectionName)
         collection.drop(() => {
           const data = []
           Object.keys(parsedData).forEach(key => data.push(parsedData[key]))
           collection.insertMany(data)
-          .then(res => {
-            assert.equal(res.insertedCount, data.length)
-            console.log(colors.green('created bens collection'))
-            resolve()
-          })
-          .catch(reject)
+            .then(res => {
+              assert.strictEqual(res.insertedCount, data.length)
+              console.log(colors.green(`created bens collection ${collectionName}`))
+              resolve()
+            })
+            .catch(reject)
         })
       })
 
@@ -54,42 +62,43 @@ function createBensDB (db, uf) {
 function createCandidatosDB (db, uf, { headers, map, ano, extension }) {
   return new Promise((resolve, reject) => {
     const filepath = path.resolve(
-      `./data/consulta_cand_${ ano }/consulta_cand_${ ano }_${ uf.toUpperCase() }.${ extension }`
+      `./data/consulta_cand_${ano}/utf-8-consulta_cand_${ano}_${uf.toUpperCase()}.${extension}`
     )
     const stream = fs.createReadStream(filepath)
     const parsedData = []
     const csvStream = csv
       .parse({
         delimiter: ';',
-        headers: headers
+        headers
       })
       .on('data', data => {
-        const schemaColumns = {}
+        const formattedData = {}
         Object.keys(data).forEach(key => {
           const schemaColumn = map.get(key)
           if (schemaColumn) {
-            schemaColumns[schemaColumn] = data[key]
+            formattedData[schemaColumn] = data[key]
           }
         })
-        schemaColumns._id = schemaColumns.id
-        schemaColumns.codigoCargo = +schemaColumns.codigoCargo
-        schemaColumns.numeroPartido = +schemaColumns.numeroPartido
-        if (parsedData.filter(parsed => parsed._id === schemaColumns._id).length > 0) {
-          console.log(`duplicate entry ${ schemaColumns._id }`)
+        formattedData._id = formattedData.id
+        formattedData.codigoCargo = +formattedData.codigoCargo
+        formattedData.numeroPartido = +formattedData.numeroPartido
+        if (parsedData.filter(parsed => parsed._id === formattedData._id).length > 0) {
+          console.warn(`duplicate entry ${formattedData._id} in ${filepath}`)
         } else {
-          parsedData.push(schemaColumns)
+          parsedData.push(formattedData)
         }
       })
       .on('end', () => {
-        const collection = db.collection(`candidatos-${ uf }-${ ano }`)
+        const collectionName = `candidatos-${uf}-${ano}`
+        const collection = db.collection(collectionName)
         collection.drop(() => {
           collection.insertMany(parsedData)
-          .then(res => {
-            assert.equal(res.insertedCount, parsedData.length)
-            console.log(colors.green('created candidatos collection'))
-            resolve()
-          })
-          .catch(reject)
+            .then(res => {
+              assert.strictEqual(res.insertedCount, parsedData.length)
+              console.log(colors.green(`created candidatos collection ${collectionName}`))
+              resolve()
+            })
+            .catch(reject)
         })
       })
 
@@ -99,12 +108,17 @@ function createCandidatosDB (db, uf, { headers, map, ano, extension }) {
 
 const url = 'mongodb://localhost:27017'
 MongoClient.connect(url, { useNewUrlParser: true }, (err, client) => {
-  assert.equal(null, err)
+  assert.strictEqual(null, err)
   const db = client.db('eleicoes')
   const promises = []
   UFs.forEach(uf => {
     eleicoes.forEach(eleicao => {
-      // promises.push(createBensDB(db, uf))
+      promises.push(createBensDB(db, uf, {
+        headers: eleicao.bensCandidato.headers,
+        map: eleicao.bensCandidato.map,
+        ano: eleicao.ano,
+        extension: eleicao.extension
+      }))
       promises.push(createCandidatosDB(db, uf, {
         headers: eleicao.consultaCandidato.headers,
         map: eleicao.consultaCandidato.map,

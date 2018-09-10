@@ -1,34 +1,30 @@
-const fs = require('fs')
-const path = require('path')
-const csv = require('fast-csv')
 const getFieldNames = require('graphql-list-fields')
 
-const getBensCandidato = async (id, uf, db) => {
-  const result = await db.collection(`bens-candidatos-${ uf.toLowerCase() }`).find({
+const getBensCandidato = async (id, { uf, ano }, db) => {
+  const result = await db.collection(`bens-candidatos-${uf.toLowerCase()}-${ano}`).find({
     _id: id
   }).toArray()
   return result[0] && result[0].bens
 }
 
 const getInfoCandidato = async (query, { uf, ano }, db) => {
-  return await db.collection(`candidatos-${ uf.toLowerCase() }-${ ano }`).find(query).toArray()
+  return db.collection(`candidatos-${uf.toLowerCase()}-${ano}`).find(query).toArray()
 }
 
 module.exports = {
   buscaPorNome: async (root, args, context, info, db) => {
     const { nome, uf, ano } = args
-    const candidatos = await db.collection(`candidatos-${ uf.toLowerCase() }-${ ano }`).find({
+    const candidatos = await db.collection(`candidatos-${uf.toLowerCase()}-${ano}`).find({
       $or: [
         { nome: { $regex: nome, $options: 'i' } },
         { nomeUrna: { $regex: nome, $options: 'i' } }
       ]
     }).toArray()
-    console.log(candidatos)
     const fields = getFieldNames(info)
     const requestBens = fields.filter(field => field.includes('bens')).length > 0
     if (requestBens) {
       candidatos.forEach(candidato => {
-        candidato.bens = getBensCandidato(candidato._id, uf, db)
+        candidato.bens = getBensCandidato(candidato._id, { uf, ano }, db)
       })
     }
     return candidatos
@@ -40,7 +36,7 @@ module.exports = {
     }, { uf, ano }, db)
     const bens = getBensCandidato(id, uf, db)
 
-    return await Promise.all([infoCandidato, bens]).then(values => {
+    return Promise.all([infoCandidato, bens]).then(values => {
       const candidato = values[0][0]
       if (candidato) {
         candidato.bens = values[1]
