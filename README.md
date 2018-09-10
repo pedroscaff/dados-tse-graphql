@@ -3,7 +3,7 @@ dados-tse-graphql
 
 Backend em [GraphQL](https://graphql.org/) e [MongoDB](https://www.mongodb.com/) para facilitar obter os dados divulgados pelo [TSE](http://www.tse.jus.br/) dos candidados. No momento estao disponiveis as eleicoes de 2014 e 2018.
 
-Query
+- Query
 
 ```graphql
 query {
@@ -18,7 +18,7 @@ query {
 }
 ```
 
-Resposta
+- Resposta
 
 ```json
 {
