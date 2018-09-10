@@ -53,6 +53,11 @@ Resposta
 mongod
 ```
 
+- Instalar dependencias
+```bash
+npm i
+```
+
 - Povoar o banco de dados
 ```bash
 npm run create-db
@@ -61,7 +66,6 @@ npm run create-db
 - Iniciar o app
 
 ```bash
-npm i
 npm start
 ```
 
