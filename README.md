@@ -48,10 +48,16 @@ query {
 ./get-data.sh
 ```
 
-- Iniciar a MongoDB (processo deve ficar aberto)
-```bash
-mongod
-```
+- Iniciar a MongoDB
+  - Com docker
+  ```bash
+  docker build -t tsegraphql .
+  docker run -p 27017:27017 -d --name tsegraphql --rm tsegraphql
+  ```
+  - Com instalacao local da MongoDB (processo deve ficar aberto)
+  ```bash
+  mongod
+  ```
 
 - Instalar dependencias
 ```bash
